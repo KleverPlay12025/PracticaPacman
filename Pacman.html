@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pacman</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background-color: black;
+    }
+    #game-container {
+      position: relative;
+      width: 1200px;  
+      height: 800px;
+      background-color: #000;
+      border: 2px solid #000;
+    }
+    #pacman {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      background-color: yellow;
+      border-radius: 50%;
+      transition: all 0.15s linear;
+      opacity: 1;
+      z-index: 2;
+    }
+    #mouth {
+      background-color: black;
+      transition: clip-path 400ms ease-in-out;
+      clip-path: polygon(100% 35%, 100% 65%, 50% 50%);
+
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background-color: black;
+      clip-path: polygon(100% 35%, 100% 65%, 50% 50%);
+      transition: clip-path 0.15s ease-in-out;
+}
+#mouth.death {
+      animation: eatSelf 1s forwards ease-in-out;
+      background-color: black;
+}
+
+
+@keyframes eatSelf {
+  0% {
+    clip-path: polygon(50% 50%, 100% 35%, 100% 65%);
+    transform: rotate(0deg);
+  }
+  25% {
+    clip-path: polygon(50% 50%, 85% 100%, 15% 100%);
+    transform: rotate(90deg);
+  }
+  50% {
+    clip-path: polygon(50% 50%, 0% 65%, 0% 35%);
+    transform: rotate(180deg);
+  }
+  75% {
+    clip-path: polygon(50% 50%, 15% 0%, 85% 0%);
+    transform: rotate(270deg);
+  }
+  100% {
+    clip-path: polygon(50% 50%, 50% 50%, 50% 50%);
+    transform: rotate(360deg);
+    opacity: 0;
+  }
+}
+    .dot {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background-color: white;
+      border-radius: 50%;
+    }
+    .life {
+      width: 30px;
+      height: 30px;
+      background-color: yellow;
+      border-radius: 50%;
+    }
+    .big-dot {
+      width: 20px;
+      height: 20px;
+      background-color: #fff;
+      animation: scaleBigDot 1s infinite alternate;
+    }
+    @keyframes scaleBigDot {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+    .wall {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      background-color: blue;
+    }
+    #score {
+      color: white;
+      font-size: 50px;
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+    }
+    .ghost {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      transition: all 0.15s linear;
+      z-index: 1;
+    }
+    @keyframes ghostBlink {
+      0% { filter: brightness(1); }
+      50% { filter: brightness(5); }
+      100% { filter: brightness(1); }
+    }
+    .ghost-bright {
+      animation: ghostBlink 0.5s infinite;
+    }
+    @keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0.2; }
+  100% { opacity: 1; }
+}
+
+.invulnerable {
+  animation: blink 0.5s infinite;
+}
+  </style>
+</head>
+<body>
+  <div id="lives-container" style="position: absolute; top: 10px; left: 10px; display: flex; gap: 5px;">
+    <div class="life"></div>
+    <div class="life"></div>
+    <div class="life"></div>
+  </div>
+  <div id="game-container">
+    <div id="score"><p></p></div>
+    <div id="pacman1" class="pacman" style="left: 10px; bottom: 10px;"></div>
+    <div id="pacman2" class="pacman" style="left: 50px; bottom: 10px;"></div>
+    <div id="pacman">
+      <div id="mouth"></div>
+    </div>
+  </div>
+
+  <script>
+    /* ====================== Sonidos y Variables Iniciales ====================== */
+    const sonido = new Audio("./Sounds/sonido_fondo.mp3");
+    const sonido1 = new Audio("./Sounds/partida_iniciada.mp3");
+    const sonido2 = new Audio("./Sounds/Power_SFX.mp3");
+    const ghostEatingSound = new Audio("./Sounds/GhostEating.mp3");
+    const deathSound = new Audio("./Sounds/muerte.mp3");
+    const comerfruta = new Audio("./Sounds/comerfruta.mp3");
+    
+
+    sonido.loop = true;
+    sonido1.loop = false;
+    sonido2.loop = false;
+    let iniciado = true;
+    let teclaPresionada = false;
+    let speed = 2;
+
+    document.addEventListener('keydown', (e) => {
+      if (!teclaPresionada) {
+        teclaPresionada = true;
+        sonido.play();
+        if (iniciado) {
+          sonido1.play();
+          iniciado = false;
+        }
+      }
+    });
+    document.addEventListener('keyup', () => {
+      teclaPresionada = false;
+    });
+
+    let vidas = 3;
+    function actualizarVidas() {
+      const lifeIcons = document.querySelectorAll('#lives-container .life');
+      lifeIcons.forEach((icon, index) => {
+        icon.style.display = (index < vidas) ? 'block' : 'none';
+      });
+    }
+    let gamePaused = false;
+
+    function pauseGame() {
+      gamePaused = true;
+      setTimeout(() => {
+        gamePaused = false;
+      }, 400);
+    }
+
+    /* ====================== Bonus: Fresa y Melón ====================== */
+    let strawberry = null;
+    let strawberryPosition = null;
+    let strawberryEaten = false;
+    let melon = null;
+    let melonPosition = null;
+    let melonEaten = false;
+
+    function createStrawberry() {
+      map.forEach((row, rowIndex) => {
+        row.split('').forEach((cell, colIndex) => {
+          if (cell === 'F' && !strawberry) {
+            strawberryPosition = { x: colIndex * 30, y: rowIndex * 30 };
+            strawberry = document.createElement('img');
+            strawberry.src = './Imagenes/strawberry.png';
+            strawberry.style.position = 'absolute';
+            strawberry.style.left = `${strawberryPosition.x}px`;
+            strawberry.style.top = `${strawberryPosition.y}px`;
+            strawberry.style.width = '30px';
+            strawberry.style.height = '30px';
+            gameContainer.appendChild(strawberry);
+          }
+        });
+      });
+    }
+
+    function createMelon() {
+      if (strawberryEaten && !melon) {
+        map.forEach((row, rowIndex) => {
+          row.split('').forEach((cell, colIndex) => {
+            if (cell === 'F' && !melon) {
+              melonPosition = { x: colIndex * 30, y: rowIndex * 30 };
+              melon = document.createElement('img');
+              melon.src = './Imagenes/Melon.png';
+              melon.style.position = 'absolute';
+              melon.style.left = `${melonPosition.x}px`;
+              melon.style.top = `${melonPosition.y}px`;
+              melon.style.width = '30px';
+              melon.style.height = '30px';
+              gameContainer.appendChild(melon);
+            }
+          });
+        });
+      }
+    }
+    setTimeout(createStrawberry, 10000);
+
+    function checkStrawberryCollision() {
+      if (strawberry && !strawberryEaten) {
+        const strawberryRect = strawberry.getBoundingClientRect();
+        const pacmanRect = pacman.getBoundingClientRect();
+        if (
+          pacmanRect.left < strawberryRect.right &&
+          pacmanRect.right > strawberryRect.left &&
+          pacmanRect.top < strawberryRect.bottom &&
+          pacmanRect.bottom > strawberryRect.top
+        ) {
+          score += 300;
+          comerfruta.play();
+
+          document.getElementById('score').textContent = `Puntuación: ${score}`;
+          strawberry.remove();
+          strawberry = null;
+          strawberryEaten = true;
+          setTimeout(createMelon, 10000);
+        }
+      }
+    }
+
+    function checkMelonCollision() {
+      if (melon && !melonEaten) {
+        const melonRect = melon.getBoundingClientRect();
+        const pacmanRect = pacman.getBoundingClientRect();
+        if (
+          pacmanRect.left < melonRect.right &&
+          pacmanRect.right > melonRect.left &&
+          pacmanRect.top < melonRect.bottom &&
+          pacmanRect.bottom > melonRect.top
+        ) {
+          score += 100;
+          comerfruta.play();
+          document.getElementById('score').textContent = `Puntuación: ${score}`;
+          melon.remove();
+          melon = null;
+          melonEaten = true;
+        }
+      }
+    }
+
+    /* ====================== Variables y Mapa ====================== */
+    let score = 0;
+    const pacman = document.getElementById('pacman');
+    const gameContainer = document.getElementById('game-container');
+    let posX = 330, posY = 332, mouthOpen = true;
+    
+pacman.style.left = `${posX}px`;
+pacman.style.top = `${posY}px`;
+    let isTeleporting = false;
+    let currentDirection = null;
+    let desiredDirection = null;
+    const cellSize = 30;
+
+    const map = [
+      "x############################",
+      "x#            ##            #",
+      "x#.####.#####.##.#####.####.#",
+      "x#P####.#####.##.#####.####P#",
+      "x#.####.#####.##.#####.####.#",
+      "x#                          #",
+      "x#.####.##.########.##.####.#",
+      "x#.####.##.########.##.####.#",
+      "x#      ##    ##    ##      #",
+      "x######.##### ## #####.######",
+      "x######.##### ## #####.######",
+      "x######.##          ##.######",
+      "x######.## ###--### ##.######",
+      "x######.## #mmmmmm# ##.######",
+      "#Xc     .  mmmOmmmm  .     cY#",
+      "#Xc    .   #mmmmmm#    .   cY#",
+      "x######.## ######## ##.######",
+      "x######.##     F    ##.######",
+      "x######.## ######## ##.######",
+      "x######.## ######## ##.######",
+      "x#            ##            #",
+      "x#.####.#####.##.#####.####.#",
+      "x#.####.#####.##.#####.####.#",
+      "x#P####                ####P#",
+      "x# ####.##.########.##.#### #",
+      "x# ####.##.########.##.#### #",
+      "x#      ##    ##    ##      #",
+      "x#.##########.##.##########.#",
+      "x#.##########.##.##########.#",
+      "x#                          #",
+      "x############################"
+    ];
+
+    let teleporters = { X: [], Y: [] };
+    function initTeleporters() {
+      map.forEach((row, rowIndex) => {
+        row.split('').forEach((cell, colIndex) => {
+          if (cell === 'X') teleporters.X.push({ x: colIndex * cellSize, y: rowIndex * cellSize });
+          if (cell === 'Y') teleporters.Y.push({ x: colIndex * cellSize, y: rowIndex * cellSize });
+        });
+      });
+    }
+
+    function createWalls() {
+      map.forEach((row, rowIndex) => {
+        row.split('').forEach((cell, colIndex) => {
+          if (cell === '#') {
+            const wall = document.createElement('div');
+            wall.classList.add('wall');
+            wall.style.left = `${colIndex * cellSize}px`;
+            wall.style.top = `${rowIndex * cellSize}px`;
+            gameContainer.appendChild(wall);
+          }
+        });
+      });
+    }
+
+    function createDots() {
+      for (let i = 0; i < map.length; i++) {
+        for (let j = 0; j < map[i].length; j++) {
+          if (map[i][j] === ' ' || map[i][j] === '.') {
+            const dot = document.createElement('div');
+            dot.classList.add('dot');
+            dot.style.left = `${j * cellSize + 10}px`;
+            dot.style.top = `${i * cellSize + 10}px`;
+            gameContainer.appendChild(dot);
+          } else if (map[i][j] === 'P') {
+            const bigDot = document.createElement('div');
+            bigDot.classList.add('dot', 'big-dot');
+            bigDot.style.left = `${j * cellSize + 5}px`;
+            bigDot.style.top = `${i * cellSize + 5}px`;
+            gameContainer.appendChild(bigDot);
+          }
+        }
+      }
+    }
+
+    /* ====================== Movimiento de Pac-Man ====================== */
+    function move() {
+      if (gamePaused || isTeleporting || !currentDirection) return;
+      const step = cellSize * speed * 0.5;
+      const nextPos = calculateNextPosition(step);
+      if (!checkCollision(nextPos.x, nextPos.y)) {
+        posX = nextPos.x;
+        posY = nextPos.y;
+        pacman.style.left = `${posX}px`;
+        pacman.style.top = `${posY}px`;
+        checkDotCollision();
+        checkTeleporters();
+        checkGhostCollisions();
+      } else if (desiredDirection && canMove(desiredDirection)) {
+        currentDirection = desiredDirection;
+        updateRotation();
+        move();
+      }
+    }
+
+    function calculateNextPosition(step) {
+      let newX = posX, newY = posY;
+      switch (currentDirection) {
+        case 'left':  newX -= step; break;
+        case 'right': newX += step; break;
+        case 'up':    newY -= step; break;
+        case 'down':  newY += step; break;
+      }
+      return { x: newX, y: newY };
+    }
+
+    function canMove(direction) {
+      const currentCol = Math.floor(posX / cellSize);
+      const currentRow = Math.floor(posY / cellSize);
+      switch (direction) {
+        case 'left':  return map[currentRow][currentCol - 1] !== '#';
+        case 'right': return map[currentRow][currentCol + 1] !== '#';
+        case 'up':    return map[currentRow - 1]?.[currentCol] !== '#';
+        case 'down':  return map[currentRow + 1]?.[currentCol] !== '#';
+      }
+      return false;
+    }
+
+    function checkCollision(x, y) {
+      const centerX = x + cellSize / 2;
+      const centerY = y + cellSize / 2;
+      const col = Math.floor(centerX / cellSize);
+      const row = Math.floor(centerY / cellSize);
+      return map[row][col] === '#';
+    }
+
+    function handleKeyDown(e) {
+      const keyToDirection = {
+        'ArrowLeft': 'left',
+        'ArrowRight': 'right',
+        'ArrowUp': 'up',
+        'ArrowDown': 'down'
+      };
+      desiredDirection = keyToDirection[e.key];
+      if (desiredDirection && canMove(desiredDirection)) {
+        currentDirection = desiredDirection;
+        updateRotation();
+      }
+    }
+
+    function updateRotation() {
+      const rotationMap = { 'left': 180, 'right': 0, 'up': -90, 'down': 90 };
+      pacman.style.transform = `rotate(${rotationMap[currentDirection]}deg)`;
+    }
+
+    function increaseSpeed() {
+      const originalSpeed = speed;
+      speed = speed * 1;
+      console.log(`Velocidad aumentada a: ${speed}`);
+      setTimeout(() => {
+        speed = originalSpeed;
+        console.log(`Velocidad restablecida a: ${speed}`);
+      }, 5000);
+    }
+
+    let bigDotActive = false;
+    let bigDotTimeout;
+
+    function checkDotCollision() {
+      const currentCol = Math.floor(posX / cellSize);
+      const currentRow = Math.floor(posY / cellSize);
+      document.querySelectorAll('.dot').forEach(dot => {
+        const dotCol = Math.floor(parseFloat(dot.style.left) / cellSize);
+        const dotRow = Math.floor(parseFloat(dot.style.top) / cellSize);
+        if (currentCol === dotCol && currentRow === dotRow) {
+          dot.remove();
+          if (dot.classList.contains('big-dot')) {
+            score += 50;
+            increaseSpeed();
+            sonido2.play();
+            if (!bigDotActive) {
+              bigDotActive = true;
+              ghosts.forEach(ghost => {
+                if (!ghost.originalSrc) {
+                  ghost.originalSrc = ghost.src;
+                }
+                ghost.src = './Imagenes/FantasmaAsustao.png';
+                ghost.classList.add("ghost-bright");
+              });
+            }
+            if (bigDotTimeout) {
+              clearTimeout(bigDotTimeout);
+            }
+            bigDotTimeout = setTimeout(() => {
+              ghosts.forEach(ghost => {
+                ghost.src = ghost.originalSrc;
+                ghost.classList.remove("ghost-bright");
+              });
+              bigDotActive = false;
+            }, 7000);
+          } else {
+            score += 10;
+          }
+          document.getElementById('score').textContent = `Puntuación: ${score}`;
+          // Verificar si la puntuación alcanza 3590
+          if (score >= 3589) {
+            window.location.href = 'YouWinPacman.html';
+          }
+        }
+      });
+      checkStrawberryCollision();
+      checkMelonCollision();
+    }
+
+    function checkTeleporters() {
+      const currentCol = Math.floor(posX / cellSize);
+      const currentRow = Math.floor(posY / cellSize);
+      if (map[currentRow][currentCol] === 'X') {
+        const target = teleporters.Y.find(t => t.y === currentRow * cellSize);
+        if (target) startTeleport(target, 'right');
+      } else if (map[currentRow][currentCol] === 'Y') {
+        const target = teleporters.X.find(t => t.y === currentRow * cellSize);
+        if (target) startTeleport(target, 'left');
+      }
+    }
+
+    function startTeleport(target, dir) {
+      isTeleporting = true;
+      pacman.style.opacity = 0;
+      document.removeEventListener('keydown', handleKeyDown);
+      setTimeout(() => {
+        posX = dir === 'right' ? target.x - cellSize : target.x + cellSize;
+        posY = target.y;
+        pacman.style.left = `${posX}px`;
+        pacman.style.top = `${posY}px`;
+        pacman.style.opacity = 1;
+        isTeleporting = false;
+        setTimeout(() => document.addEventListener('keydown', handleKeyDown), 400);
+      }, 300);
+    }
+
+    function animateMouth() {
+      if (isTeleporting) return;
+      const mouth = pacman.querySelector("#mouth");
+      mouth.style.clipPath = mouthOpen
+        ? "polygon(100% 45%, 100% 55%, 70% 50%)"
+        : "polygon(100% 25%, 100% 75%, 50% 50%)";
+      mouthOpen = !mouthOpen;
+    }
+  
+
+    /* ====================== Integración de Fantasmas ====================== */
+    const ghosts = [];
+    function createGhosts() {
+      const ghostImages = [
+        './Imagenes/blinky.png',
+        './Imagenes/pinky.png',
+        './Imagenes/inky.png',
+        './Imagenes/clyde.png'
+      ];
+      const initialPositions = [
+        { x: 30, y: 30 },
+        { x: 780, y: 30 },
+        { x: 30, y: 870 },
+        { x: 780, y: 870 }
+      ];
+      for (let i = 0; i < 4; i++) {
+        const ghost = document.createElement('img');
+        ghost.src = ghostImages[i];
+        ghost.classList.add('ghost');
+        ghost.style.left = `${initialPositions[i].x}px`;
+        ghost.style.top = `${initialPositions[i].y}px`;
+        ghost.direction = ['left', 'right', 'up', 'down'][Math.floor(Math.random() * 4)];
+        ghost.posX = initialPositions[i].x;
+        ghost.posY = initialPositions[i].y;
+        gameContainer.appendChild(ghost);
+        ghosts.push(ghost);
+      }
+    }
+
+    function moveGhosts() {
+      if (gamePaused) return;
+      ghosts.forEach(ghost => {
+        const directions = ['left', 'right', 'up', 'down'];
+        let newDirection = directions[Math.floor(Math.random() * directions.length)];
+        if (canGhostMove(ghost, newDirection)) {
+          ghost.direction = newDirection;
+        }
+        let step = cellSize * 0.5;
+        let newX = ghost.posX, newY = ghost.posY;
+        switch (ghost.direction) {
+          case 'left':  newX -= step; break;
+          case 'right': newX += step; break;
+          case 'up':    newY -= step; break;
+          case 'down':  newY += step; break;
+        }
+        if (!checkCollision(newX, newY)) {
+          ghost.posX = newX;
+          ghost.posY = newY;
+          ghost.style.left = `${newX}px`;
+          ghost.style.top = `${newY}px`;
+        }
+        checkGhostTeleporters(ghost);
+      });
+    }
+
+    function checkGhostTeleporters(ghost) {
+      const ghostCol = Math.floor(ghost.posX / cellSize);
+      const ghostRow = Math.floor(ghost.posY / cellSize);
+      if (map[ghostRow][ghostCol] === 'X') {
+        const target = teleporters.Y.find(t => t.y === ghostRow * cellSize);
+        if (target) {
+          ghost.posX = target.x;
+          ghost.posY = target.y;
+          ghost.style.left = `${target.x}px`;
+          ghost.style.top = `${target.y}px`;
+        }
+      } else if (map[ghostRow][ghostCol] === 'Y') {
+        const target = teleporters.X.find(t => t.y === ghostRow * cellSize);
+        if (target) {
+          ghost.posX = target.x;
+          ghost.posY = target.y;
+          ghost.style.left = `${target.x}px`;
+          ghost.style.top = `${target.y}px`;
+        }
+      }
+    }
+
+    function canGhostMove(ghost, direction) {
+      const col = Math.floor(ghost.posX / cellSize);
+      const row = Math.floor(ghost.posY / cellSize);
+      switch (direction) {
+        case 'left':  return map[row][col - 1] !== '#';
+        case 'right': return map[row][col + 1] !== '#';
+        case 'up':    return map[row - 1]?.[col] !== '#';
+        case 'down':  return map[row + 1]?.[col] !== '#';
+      }
+      return false;
+    }
+
+    function checkGhostCollisions() {
+      const pacRect = pacman.getBoundingClientRect();
+      ghosts.forEach(ghost => {
+        const ghostRect = ghost.getBoundingClientRect();
+        if (
+          pacRect.left < ghostRect.right &&
+          pacRect.right > ghostRect.left &&
+          pacRect.top < ghostRect.bottom &&
+          pacRect.bottom > ghostRect.top
+        ) {
+          if (bigDotActive) {
+            ghostEatingSound.play();
+            pauseGame();
+            const centerX = (gameContainer.clientWidth / 2) - (cellSize / 2);
+            const centerY = (gameContainer.clientHeight / 2) - (cellSize / 2);
+            ghost.posX = 390;
+            ghost.posY = 420;
+            ghost.style.left = `${centerX}px`;
+            ghost.style.top = `${centerY}px`;
+          } else {
+            pacmanDeathAnimation();
+            deathSound.play();
+            vidas--;
+            pauseGame();
+            actualizarVidas();
+            if (vidas <= 0) {
+              window.location.href = 'YouLosePacman.html';
+            } else {
+              resetPacman();
+            }
+          }
+        }
+      });
+    }
+
+    let invulnerable = false;
+
+    function pacmanDeathAnimation() {
+  // Detener la animación normal de la boca
+  clearInterval(animationInterval);
+  const mouth = pacman.querySelector("#mouth");
+  
+  // Eliminar cualquier estilo inline que pueda interferir
+  mouth.style.transition = ""; 
+  // Forzar reflow (opcional, para asegurarnos de que el cambio se registre)
+  void mouth.offsetWidth;
+  
+  // Agregar la clase 'death' para que el clip-path se modifique según CSS
+  mouth.classList.add("death");
+  
+  setTimeout(() => {
+    // Remover la clase 'death' para volver al estado normal
+    mouth.classList.remove("death");
+    
+    // Reiniciar a Pac-Man (por ejemplo, su posición)
+    resetPacman();
+    
+    // Activar invulnerabilidad y efecto visual (si lo deseas)
+    invulnerable = true;
+    pacman.classList.add("invulnerable");
+    
+    // Reiniciar la animación normal de la boca
+    animationInterval = setInterval(animateMouth, 200);
+    
+    // Después de 5 segundos, desactivar la invulnerabilidad
+    setTimeout(() => {
+      invulnerable = false;
+      pacman.classList.remove("invulnerable");
+    }, 5000);
+  }, 400);
+}
+  
+
+    function resetPacman() {
+    
+      posX = 390;
+      posY = 330;
+      pacman.style.left = `${posX}px`;
+      pacman.style.top = `${posY}px`;
+    }
+
+    /* ====================== Inicialización ====================== */
+    createWalls();
+    createDots();
+    initTeleporters();
+    createGhosts();
+    document.addEventListener('keydown', handleKeyDown);
+    setInterval(move, 150);
+    let animationInterval = setInterval(animateMouth, 200);
+    setInterval(moveGhosts, 150);
+  </script>
+</body>
+</html>

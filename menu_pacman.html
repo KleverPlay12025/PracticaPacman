@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Pac-Man Menu</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+    body {
+        background: url('Imagenes/fondo.png') no-repeat center center fixed;      
+        background-size: cover;
+      color: yellow;
+      font-family: 'Press Start 2P', cursive;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      padding: 20px;
+      font-size: 64px;
+      text-shadow: 4px 4px 0px blue;
+    }
+
+    .menu-wrapper {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .menu-container {
+      background: black;
+      border: 4px solid yellow;
+      padding: 20px;
+      width: 500px;
+      box-shadow: 0px 0px 15px yellow;
+    }
+
+    .menu-container ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .menu-container li {
+      margin: 15px 0;
+    }
+
+    .menu-container button {
+      background-color: black;
+      color: yellow;
+      border: 2px solid yellow;
+      padding: 10px;
+      width: 100%;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+    }
+
+    .menu-container button:hover {
+      background-color: yellow;
+      color: black;
+      transform: scale(1.1);
+    }
+
+    #instructions {
+      display: none;
+      margin-top: 15px;
+      color: white;
+      background: black;
+      padding: 10px;
+      border: 2px solid white;
+    }
+  </style>
+</head>
+<body>
+    
+  <header>Pac-Man Game</header>
+  <div class="menu-wrapper">
+    <div class="menu-container">
+      <ul>
+        <li><button onclick="playGame()">Jugar</button></li>
+        <li><button onclick="toggleInstructions()">Cómo Jugar</button></li>
+        <li><button onclick="openOptions()">Opciones</button></li>
+        <li><button onclick="exitGame()">Salir</button></li>
+      </ul>
+      <div id="instructions">
+        <h3>Cómo Jugar</h3>
+        <p>Recoge todos los puntos sin que los fantasmas te atrapen. Usa las frutas para obtener más puntos y las píldoras de poder para comer fantasmas.</p>
+      </div>
+    </div>
+  </div>
+
+  <audio id="background-music" loop>
+    <source src="./Sounds/menuprincipalmusic.mp3" type="audio/mpeg">  
+  </audio>
+
+  <script>
+    let audioPlayed = false;
+
+    function playGame() {
+      if (!audioPlayed) {
+        const audio = document.getElementById("background-music");
+        audio.play().catch(error => console.log("Reproducción bloqueada:", error));
+        audioPlayed = true;  // Marcar que el audio ya se ha intentado reproducir
+      }
+      // Redirige al archivo PacmanPrueba28.html cuando se haga clic en "Jugar"
+      window.location.href = "Pacman.html";
+    }
+
+    function toggleInstructions() {
+      var instructions = document.getElementById("instructions");
+      instructions.style.display = instructions.style.display === "none" || instructions.style.display === "" ? "block" : "none";
+    }
+
+    function openOptions() {
+      alert("Opciones no disponibles en este demo.");
+    }
+
+    function exitGame() {
+      // Redirige a Google cuando se haga clic en "Salir"
+      window.location.href = "https://www.google.com";
+    }
+
+    // Añadir un evento de clic en el documento para intentar reproducir el audio
+    document.addEventListener('click', () => {
+      if (!audioPlayed) {
+        const audio = document.getElementById("background-music");
+        audio.play().catch(error => console.log("Reproducción bloqueada:", error));
+        audioPlayed = true;  // Marcar que el audio ha sido intentado reproducir
+      }
+    }, { once: true }); // Solo se ejecuta una vez al primer clic
+  </script>
+</body>
+</html>

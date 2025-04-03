@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Over</title>
+    <style>
+        body {
+            background: black;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        .game-over-img {
+            width: 80%; /* Ajusta el tamaño de la imagen según sea necesario */
+            max-width: 600px;
+            cursor: pointer; /* Indica que es interactivo */
+        }
+        .menu-button {
+            margin-top: 20px;
+            padding: 20px 40px;
+            font-size: 24px;
+            background-color: white;
+            color: black;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            transition: all 0.2s ease;
+        }
+        .menu-button:hover {
+            background-color: gray;
+            transform: scale(1.1);
+        }
+        /* Retro font */
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+    </style>
+</head>
+<body>
+    <audio id="gameOverAudio" loop>
+        <source src="./Sounds/cancion_lose.mp3" type="audio/mpeg">
+        Tu navegador no soporta el elemento de audio.
+    </audio>
+    
+    <img src="Imagenes/lose.png" alt="Game Over" class="game-over-img" onclick="playAudio()">
+    <button class="menu-button" onclick="volverAlMenu()">Menú Principal</button>
+
+    <script>
+        let audioPlayed = false;
+        function playAudio() {
+            if (!audioPlayed) {
+                const audio = document.getElementById("gameOverAudio");
+                audio.play().catch(error => console.log("Reproducción bloqueada:", error));
+                audioPlayed = true;
+            }
+        }
+        function volverAlMenu() {
+            window.location.href = 'menu_pacman.html';
+        }
+    </script>
+</body>
+</html>

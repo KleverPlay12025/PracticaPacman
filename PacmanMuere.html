@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Animación de Pacman</title>
+  <style>
+    /* Centrado y fondo */
+    body {
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #080808;
+    }
+    /* SVG para el Pacman */
+    svg {
+      width: 200px;
+      height: 200px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Usamos un SVG con un path que dibuja a Pacman -->
+  <svg id="pacmanSvg" viewBox="0 0 100 100">
+    <path id="pacmanPath" fill="yellow" d=""></path>
+  </svg>
+
+  <script>
+    // Referencias y parámetros básicos
+    const pacmanPath = document.getElementById('pacmanPath');
+    const R = 50;           // Radio del círculo
+    const centerX = 50;     // Centro X del SVG
+    const centerY = 50;     // Centro Y del SVG
+
+    // Variables para la animación
+    let animationRequest;
+    let deathAnimation = false;
+    let startTime = null;
+    let deathStartTime = null;
+    const deathDuration = 400; // duración de la animación de muerte en milisegundos
+
+    // Parámetros de oscilación (animación de la boca)
+    const baseAngle = 10; // ángulo base (en grados)
+    const amplitude = 5;  // amplitud de la oscilación
+    const speed = 0.005;  // velocidad de oscilación
+
+    // Función que genera el "d" del path de Pacman dado un ángulo (medio ángulo de la boca)
+    function drawPacman(thetaDeg) {
+      // thetaDeg es el ángulo medio en grados
+      const theta = thetaDeg * Math.PI / 180;
+      // Calculamos los puntos superior e inferior del borde de la boca
+      const x1 = centerX + R * Math.cos(theta);
+      const y1 = centerY - R * Math.sin(theta);
+      const x2 = centerX + R * Math.cos(theta);
+      const y2 = centerY + R * Math.sin(theta);
+      // El arco se recorre 360° menos 2 veces el ángulo de la boca
+      const sweepAngle = 360 - 2 * thetaDeg;
+      const largeArcFlag = sweepAngle > 180 ? 1 : 0;
+      // La figura se compone del centro, un borde hacia el punto superior, el arco y regreso al centro
+      const d = [
+        `M ${centerX},${centerY}`,
+        `L ${x1},${y1}`,
+        `A ${R},${R} 0 ${largeArcFlag} 1 ${x2},${y2}`,
+        'Z'
+      ].join(' ');
+      pacmanPath.setAttribute('d', d);
+    }
+
+    // Función de animación principal
+    function animate(time) {
+      if (!startTime) startTime = time;
+      const elapsed = time - startTime;
+      
+      if (!deathAnimation) {
+        // Animación normal: la boca oscila entre (base - amplitude) y (base + amplitude)
+        const theta = baseAngle + amplitude * Math.sin(elapsed * speed * 2 * Math.PI);
+        drawPacman(theta);
+      } else {
+        // Animación de muerte: la boca se abre progresivamente hasta 90°
+        const deathElapsed = time - deathStartTime;
+        let progress = deathElapsed / deathDuration;
+        if (progress > 1) progress = 1;
+        // deathStartAngle se guarda al iniciar la animación de muerte
+        const currentAngle = deathStartAngle;
+        const targetAngle = 90; // ángulo para "muerte" (boca completamente abierta)
+        const theta = currentAngle + (targetAngle - currentAngle) * progress;
+        drawPacman(theta);
+        if (progress === 1) {
+          // Al terminar la animación de muerte se reanuda la animación normal
+          deathAnimation = false;
+          startTime = time;
+        }
+      }
+      animationRequest = requestAnimationFrame(animate);
+    }
+
+    // Variable para guardar el ángulo actual al iniciar la animación de muerte
+    let deathStartAngle = baseAngle;
+
+    // Evento para detectar la tecla espacio
+    window.addEventListener('keydown', function(e) {
+      if (e.code === 'Space' && !deathAnimation) {
+        deathAnimation = true;
+        deathStartTime = performance.now();
+        // Se guarda el ángulo actual de la oscilación para iniciar la transición a 90°
+        const elapsed = performance.now() - startTime;
+        deathStartAngle = baseAngle + amplitude * Math.sin(elapsed * speed * 2 * Math.PI);
+      }
+    });
+
+    // Iniciamos la animación
+    animationRequest = requestAnimationFrame(animate);
+  </script>
+</body>
+</html>

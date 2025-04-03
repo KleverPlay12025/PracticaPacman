@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>¡Has ganado!</title>
+    <style>
+        body {
+            background: url('Imagenes/victoria.png') no-repeat center center fixed;
+            font-family: 'Press Start 2P', cursive;
+            background-color: black;
+            color: #FFFF00;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end; /* Mueve el contenido hacia abajo */
+            height: 100vh;
+            margin: 0;
+            padding-bottom: 50px; /* Espacio entre el borde inferior y el contenido */
+        }
+        .container {
+            text-align: center;
+            padding: 30px;
+            background-color: #000;
+            border: 5px solid #FFFF00;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+            width: 300px;
+        }
+        h1 {
+            font-size: 36px;
+            margin: 20px 0;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            background-color: #FFFF00;
+            color: black;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            transition: all 0.2s ease;
+        }
+        button:hover {
+            background-color: #FFDD00;
+            transform: scale(1.1);
+        }
+        /* Retro font */
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+    </style>
+</head>
+<body>
+
+    <!-- Elemento de audio agregado -->
+    <audio id="victoriaAudio">
+        <source src="./Sounds/victoria_cancion.mp3" type="audio/mpeg">
+        Tu navegador no soporta el elemento de audio.
+    </audio>
+
+    <div class="container">
+        <h1>¡Has ganado!</h1>
+        <button onclick="volverAJugar()">Volver a jugar</button>
+    </div>
+
+    <script>
+        function volverAJugar() {
+            // Redirige a menu_pacman.html
+            window.location.href = 'menu_pacman.html';
+        }
+    </script>
+
+    <!-- Script para reproducir el audio en la primera interacción -->
+    <script>
+        let audioPlayed = false;
+        document.addEventListener("click", function() {
+            if (!audioPlayed) {
+                const audio = document.getElementById("victoriaAudio");
+                audio.play().catch(error => console.log("Reproducción bloqueada:", error));
+                audioPlayed = true;
+            }
+        });
+    </script>
+
+</body>
+</html>
